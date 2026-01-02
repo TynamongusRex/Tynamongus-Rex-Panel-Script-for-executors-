@@ -1,0 +1,233 @@
+-- Tynamongus-Rex Panel for JJSPloit
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Variables
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local TitleBar = Instance.new("Frame")
+local TitleLabel = Instance.new("TextLabel")
+local CloseButton = Instance.new("TextButton")
+local FlyButton = Instance.new("TextButton")
+local KillAllButton = Instance.new("TextButton")
+local Dragging = false
+local DragStart = nil
+local StartPos = nil
+
+local Flying = false
+local FlySpeed = 50
+local BodyVelocity = nil
+local BodyAngularVelocity = nil
+
+-- Create GUI
+ScreenGui.Name = "TynamongusRexPanel"
+ScreenGui.Parent = PlayerGui
+ScreenGui.ResetOnSpawn = false
+
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.35, 0, 0.35, 0)
+MainFrame.Size = UDim2.new(0, 250, 0, 180)
+MainFrame.Active = true
+MainFrame.Draggable = false
+
+-- Corner rounding
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 8)
+MainCorner.Parent = MainFrame
+
+-- Title Bar
+TitleBar.Name = "TitleBar"
+TitleBar.Parent = MainFrame
+TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+TitleBar.BorderSizePixel = 0
+TitleBar.Size = UDim2.new(1, 0, 0, 35)
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 8)
+TitleCorner.Parent = TitleBar
+
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Parent = TitleBar
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+TitleLabel.Size = UDim2.new(1, -70, 1, 0)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "Tynamongus-Rex Panel"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 14
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+CloseButton.Name = "CloseButton"
+CloseButton.Parent = TitleBar
+CloseButton.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+CloseButton.BorderSizePixel = 0
+CloseButton.Position = UDim2.new(1, -35, 0, 5)
+CloseButton.Size = UDim2.new(0, 30, 0, 25)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 16
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 4)
+CloseCorner.Parent = CloseButton
+
+-- Fly Button
+FlyButton.Name = "FlyButton"
+FlyButton.Parent = MainFrame
+FlyButton.BackgroundColor3 = Color3.fromRGB(85, 170, 255)
+FlyButton.BorderSizePixel = 0
+FlyButton.Position = UDim2.new(0.1, 0, 0.3, 0)
+FlyButton.Size = UDim2.new(0.8, 0, 0, 40)
+FlyButton.Font = Enum.Font.Gotham
+FlyButton.Text = "Fly [OFF]"
+FlyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+FlyButton.TextSize = 16
+
+local FlyCorner = Instance.new("UICorner")
+FlyCorner.CornerRadius = UDim.new(0, 6)
+FlyCorner.Parent = FlyButton
+
+-- Kill All Button
+KillAllButton.Name = "KillAllButton"
+KillAllButton.Parent = MainFrame
+KillAllButton.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+KillAllButton.BorderSizePixel = 0
+KillAllButton.Position = UDim2.new(0.1, 0, 0.6, 0)
+KillAllButton.Size = UDim2.new(0.8, 0, 0, 40)
+KillAllButton.Font = Enum.Font.Gotham
+KillAllButton.Text = "Kill Everyone"
+KillAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+KillAllButton.TextSize = 16
+
+local KillCorner = Instance.new("UICorner")
+KillCorner.CornerRadius = UDim.new(0, 6)
+KillCorner.Parent = KillAllButton
+
+-- Dragging functionality
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        Dragging = true
+        DragStart = input.Position
+        StartPos = MainFrame.Position
+    end
+end)
+
+TitleBar.InputChanged:Connect(function(input)
+    if Dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - DragStart
+        MainFrame.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + delta.X, StartPos.Y.Scale, StartPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        Dragging = false
+    end
+end)
+
+-- Fly Toggle Function
+local function toggleFly()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    if Flying then
+        -- Disable fly
+        if BodyVelocity then BodyVelocity:Destroy() end
+        if BodyAngularVelocity then BodyAngularVelocity:Destroy() end
+        Flying = false
+        FlyButton.Text = "Fly [OFF]"
+        FlyButton.BackgroundColor3 = Color3.fromRGB(85, 170, 255)
+    else
+        -- Enable fly
+        BodyVelocity = Instance.new("BodyVelocity")
+        BodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+        BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        BodyVelocity.Parent = humanoidRootPart
+        
+        BodyAngularVelocity = Instance.new("BodyAngularVelocity")
+        BodyAngularVelocity.MaxTorque = Vector3.new(4000, 4000, 4000)
+        BodyAngularVelocity.AngularVelocity = Vector3.new(0, 0, 0)
+        BodyAngularVelocity.Parent = humanoidRootPart
+        
+        Flying = true
+        FlyButton.Text = "Fly [ON]"
+        FlyButton.BackgroundColor3 = Color3.fromRGB(85, 255, 85)
+    end
+end
+
+-- Fly controls (WASD)
+RunService.Heartbeat:Connect(function()
+    if Flying and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local humanoidRootPart = LocalPlayer.Character.HumanoidRootPart
+        local camera = workspace.CurrentCamera
+        local moveVector = humanoidRootPart.CFrame.LookVector
+        
+        local velocity = Vector3.new(0, 0, 0)
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            velocity = velocity + (camera.CFrame.LookVector * FlySpeed)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            velocity = velocity - (camera.CFrame.LookVector * FlySpeed)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            velocity = velocity - (camera.CFrame.RightVector * FlySpeed)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            velocity = velocity + (camera.CFrame.RightVector * FlySpeed)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            velocity = velocity + Vector3.new(0, FlySpeed, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            velocity = velocity - Vector3.new(0, FlySpeed, 0)
+        end
+        
+        if BodyVelocity then
+            BodyVelocity.Velocity = velocity
+        end
+    end
+end)
+
+-- Kill All Function
+local function killAll()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.Health = 0
+        end
+    end
+end
+
+-- Button Connections
+FlyButton.MouseButton1Click:Connect(toggleFly)
+KillAllButton.MouseButton1Click:Connect(killAll)
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- Hover effects
+local function addHover(button, hoverColor, originalColor)
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = hoverColor}):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = originalColor}):Play()
+    end)
+end
+
+addHover(FlyButton, Color3.fromRGB(100, 185, 255), Color3.fromRGB(85, 170, 255))
+addHover(KillAllButton, Color3.fromRGB(255, 100, 100), Color3.fromRGB(255, 85, 85))
+addHover(CloseButton, Color3.fromRGB(255, 50, 50), Color3.fromRGB(255, 85, 85))
+
+print("Tynamongus-Rex Panel loaded! Drag by title bar, use WASD+Space/Shift to fly.")
